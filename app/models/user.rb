@@ -8,6 +8,7 @@ class User < ActiveRecord::Base
   end
 
   def self.signup!(params)
+    params = params.dup
     params[:name_key] = params[:legal_name].downcase.gsub(/\W/, "")
     raise UserSignupException, "password must be at least 8 characters long" unless params[:password].length >= 8
     raise UserSignupException, "passwords don't match" unless params[:password] == params[:password_verified]

@@ -82,7 +82,6 @@ describe User, "signup" do
 
   it "should raise an error if a user with that name_key and password already exists" do
     User.signup!(@brandon_signup_attributes)
-    @brandon_signup_attributes = brandon_signup_attributes
     lambda {
       User.signup!(@brandon_signup_attributes)
     }.should raise_error(UserSignupException, "there is already a user with that name/password combination")

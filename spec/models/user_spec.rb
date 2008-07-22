@@ -88,6 +88,11 @@ describe User, "signup" do
     }.should raise_error(UserSignupException, "there is already a user with that name/password combination")
   end
 
+  it "should save the password as hashed text" do
+    u = User.signup!(@brandon_signup_attributes)
+    u.password.should eql("7005473cad87b5f62724520a823a6f5b42a16075")
+  end
+
   it "signup should create and return a new user if none by that name/password already exists" do
     User.signup!(@brandon_signup_attributes).id.should eql(1)
   end

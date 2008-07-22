@@ -14,6 +14,7 @@ class User < ActiveRecord::Base
     raise UserSignupException, "password must contain both uppercase and lowercase letters" unless params[:password] =~ /([a-z].*[A-Z]|[A-Z].*[a-z])/
     raise UserSignupException, "invalid email format" unless params[:email] =~ /\w[\w_\.-]*@[\w_]+(\.[\w_]+)+/i
     params.delete(:password_verified)
+    params[:password] = hash_of_text(params[:password])
     begin
       return create!(params)
     rescue ActiveRecord::RecordInvalid, "Validation failed: Password has already been taken, Legal name has already been taken"

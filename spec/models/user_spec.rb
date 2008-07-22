@@ -1,8 +1,8 @@
 require File.expand_path(File.dirname(__FILE__) + '/../spec_helper')
 
-describe User do
-  before(:each) do
-    @valid_attributes = {
+module UserSpecHelper
+  def valid_attributes
+    {
       :legal_name => "Brandon Clark Schoepflin Sanders",
       :name_key => "brandonclarkschoepflinsanders",
       :password => User.hash_of_text("PassWord"),
@@ -27,19 +27,28 @@ describe User do
     }
   end
 
-  it "should create a new instance given valid attributes" do
-    User.create!(@valid_attributes)
-  end
-end
-
-describe User, "signup" do
-  before(:each) do
-    @brandon_signup_attributes = {
+  def brandon_signup_attributes
+    {
       :legal_name => "Brandon Clark Schoepflin Sanders",
       :password => "PassWord",
       :password_verified => "PassWord",
       :email => "brandon@thesanders.us"
     }
+  end
+end
+
+describe User do
+  include UserSpecHelper
+
+  it "should create a new instance given valid attributes" do
+    User.create!(valid_attributes)
+  end
+end
+
+describe User, "signup" do
+  include UserSpecHelper
+  before(:each) do
+    @brandon_signup_attributes = brandon_signup_attributes
   end
 
   it "should raise an error if passwords don't match" do
@@ -73,7 +82,7 @@ describe User, "signup" do
 
   it "should raise an error if a user with that name_key and password already exists" do
     User.signup!(@brandon_signup_attributes)
-    @brandon_signup_attributes[:password_verified] = "PassWord"
+    @brandon_signup_attributes = brandon_signup_attributes
     lambda {
       User.signup!(@brandon_signup_attributes)
     }.should raise_error(UserSignupException, "there is already a user with that name/password combination")

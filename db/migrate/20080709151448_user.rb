@@ -2,6 +2,7 @@ class User < ActiveRecord::Migration
   def self.up
     create_table :users do |t|
       t.column :legal_name, :string, :null => false
+      t.column :name_key, :string, :null => false
       t.column :password, :string, :null => false
       t.column :created_at, :datetime
 
@@ -29,6 +30,7 @@ class User < ActiveRecord::Migration
       t.column :weight_lbs, :integer
       t.column :marital_status, :string
     end
+    add_index :users, :name_key
     add_index :users, :legal_name
     add_index :users, :password
     add_index :users, :created_at

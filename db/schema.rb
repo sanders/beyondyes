@@ -13,6 +13,7 @@ ActiveRecord::Schema.define(:version => 20080709151448) do
 
   create_table "users", :force => true do |t|
     t.string   "legal_name",             :null => false
+    t.string   "name_key",               :null => false
     t.string   "password",               :null => false
     t.datetime "created_at"
     t.string   "email"

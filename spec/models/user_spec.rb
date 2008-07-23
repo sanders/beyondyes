@@ -5,7 +5,8 @@ module UserSpecHelper
     {
       :legal_name => "Brandon Clark Schoepflin Sanders",
       :name_key => "brandonclarkschoepflinsanders",
-      :password => User.hash_of_text("PassWord"),
+      :password => "PassWord",
+      :password_verified => "PassWord",
 
       :email => "brandon@thesanders.us",
 
@@ -47,6 +48,7 @@ end
 
 describe User, "signup" do
   include UserSpecHelper
+
   before(:each) do
     @brandon_signup_attributes = brandon_signup_attributes
   end
@@ -55,14 +57,15 @@ describe User, "signup" do
     lambda {
       @brandon_signup_attributes[:password_verified] = "doesntmatch"
       User.signup!(@brandon_signup_attributes)
-    }.should raise_error(UserSignupException, "passwords don't match")
+    }.should raise_error(ActiveRecord::RecordInvalid, "Validation failed: Password doesn't match verification password")
   end
 
   it "should raise an error if password too short" do
     lambda {
-      @brandon_signup_attributes[:password] = "short"
+      @brandon_signup_attributes[:password] = "Short"
+      @brandon_signup_attributes[:password_verified] = "Short"
       User.signup!(@brandon_signup_attributes)
-    }.should raise_error(UserSignupException, "password must be at least 8 characters long")
+    }.should raise_error(ActiveRecord::RecordInvalid, "Validation failed: Password must be at least 8 characters long")
   end
 
   it "should raise an error if password too simple" do
@@ -70,21 +73,31 @@ describe User, "signup" do
       @brandon_signup_attributes[:password] = "simplepassword"
       @brandon_signup_attributes[:password_verified] = "simplepassword"
       User.signup!(@brandon_signup_attributes)
-    }.should raise_error(UserSignupException, "password must contain both uppercase and lowercase letters")
+    }.should raise_error(ActiveRecord::RecordInvalid, "Validation failed: Password must contain both uppercase and lowercase letters")
   end
 
   it "should raise an error if email invalid" do
     lambda {
       @brandon_signup_attributes[:email] = "no.at.sign"
       User.signup!(@brandon_signup_attributes)
-    }.should raise_error(UserSignupException, "invalid email format")
+    }.should raise_error(ActiveRecord::RecordInvalid, "Validation failed: Email invalid format")
   end
 
   it "should raise an error if a user with that name_key and password already exists" do
     User.signup!(@brandon_signup_attributes)
     lambda {
+      @brandon_signup_attributes[:email] = "a@different.email"
       User.signup!(@brandon_signup_attributes)
-    }.should raise_error(UserSignupException, "there is already a user with that name/password combination")
+    }.should raise_error(ActiveRecord::RecordInvalid, "Validation failed: Legal name and password already taken")
+  end
+
+  it "should raise an error if a user with that name_key and email already exists" do
+    User.signup!(@brandon_signup_attributes)
+    lambda {
+      @brandon_signup_attributes[:password] = "PassWord2"
+      @brandon_signup_attributes[:password_verified] = "PassWord2"
+      User.signup!(@brandon_signup_attributes)
+    }.should raise_error(ActiveRecord::RecordInvalid, "Validation failed: Legal name and email already taken")
   end
 
   it "should save the password as hashed text" do

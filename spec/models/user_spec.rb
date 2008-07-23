@@ -109,3 +109,36 @@ describe User, "signup" do
     User.signup!(@brandon_signup_attributes).id.should eql(1)
   end
 end
+
+describe User, "login" do
+  include UserSpecHelper
+
+  before(:each) do
+    User.signup!(brandon_signup_attributes)
+    @brandon_login_attributes = brandon_signup_attributes
+  end
+
+  it "should raise an error unless given a password" do
+    lambda {
+      User.login({:name_or_email => 'Brandon CS Sanders'}).id.should eql(1)
+    }.should raise_error(UserLoginException, "Password is missing")
+  end
+
+  it "should raise an error unless given an email or legal_name" do
+    lambda {
+      User.login({:password => 'Something'}).id.should eql(1)
+    }.should raise_error(UserLoginException, "Name/email is missing")
+  end
+
+  it "should login a user given an existing legal_name and password" do
+    User.login({:name_or_email => 'Brandon Clark Schoepflin Sanders', :password => "PassWord"}).id.should eql(1)
+  end
+
+  it "should login a user given an email and password" do
+    User.login({:name_or_email => 'brandon@thesanders.us', :password => "PassWord"}).id.should eql(1)
+  end
+
+  it "should return nil given a non-existant legal_name/email and password" do
+    User.login({:name_or_email => 'NonExistent', :password => "PassWord"}).should be_nil
+  end
+end

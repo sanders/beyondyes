@@ -15,6 +15,15 @@ class User < ActiveRecord::Base
     /\w[\w_\.-]*@[\w_]+(\.[\w_]+)+/i
   end
 
+  def self.login(params)
+    raise UserLoginException, "Password is missing" unless params[:password]
+    raise UserLoginException, "Name/email is missing" unless params[:name_or_email]
+    return User.find(:first, :conditions => ["password = ? and (email = ? or name_key = ?)", 
+      User.hash_of_text(params[:password]), 
+      params[:name_or_email], 
+      User.name_key(params[:name_or_email])])
+  end
+
   def self.signup!(params)
     return create!(params)
   end

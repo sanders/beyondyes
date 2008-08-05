@@ -3,13 +3,16 @@ require 'stringio'
 require 'strscan'
 
 module ActionController
-  # HTTP methods which are accepted by default. 
+  # HTTP methods which are accepted by default.
   ACCEPTED_HTTP_METHODS = Set.new(%w( get head put post delete options ))
 
   # CgiRequest and TestRequest provide concrete implementations.
   class AbstractRequest
-    cattr_accessor :relative_url_root
-    remove_method :relative_url_root
+    def self.relative_url_root=(*args)
+      ActiveSupport::Deprecation.warn(
+        "ActionController::AbstractRequest.relative_url_root= has been renamed." +
+        "You can now set it with config.action_controller.relative_url_root=", caller)
+    end
 
     # The hash of environment variables for this request,
     # such as { 'RAILS_ENV' => 'production' }.
@@ -61,7 +64,7 @@ module ActionController
       request_method == :head
     end
 
-    # Provides acccess to the request's HTTP headers, for example:
+    # Provides access to the request's HTTP headers, for example:
     #  request.headers["Content-Type"] # => "text/plain"
     def headers
       @headers ||= ActionController::Http::Headers.new(@env)
@@ -82,30 +85,43 @@ module ActionController
     # Returns the accepted MIME type for the request
     def accepts
       @accepts ||=
-        if @env['HTTP_ACCEPT'].to_s.strip.empty?
-          [ content_type, Mime::ALL ].compact # make sure content_type being nil is not included
-        else
-          Mime::Type.parse(@env['HTTP_ACCEPT'])
+        begin
+          header = @env['HTTP_ACCEPT'].to_s.strip
+
+          if header.empty?
+            [content_type, Mime::ALL].compact
+          else
+            Mime::Type.parse(header)
+          end
         end
     end
 
-    # Returns the Mime type for the format used in the request. If there is no format available, the first of the 
-    # accept types will be used. Examples:
+    # Returns the Mime type for the format used in the request.
     #
     #   GET /posts/5.xml   | request.format => Mime::XML
     #   GET /posts/5.xhtml | request.format => Mime::HTML
-    #   GET /posts/5       | request.format => request.accepts.first (usually Mime::HTML for browsers)
+    #   GET /posts/5       | request.format => Mime::HTML or MIME::JS, or request.accepts.first depending on the value of <tt>ActionController::Base.use_accept_header</tt>
     def format
-      @format ||= parameters[:format] ? Mime::Type.lookup_by_extension(parameters[:format]) : accepts.first
+      @format ||= begin
+        if parameters[:format]
+          Mime::Type.lookup_by_extension(parameters[:format])
+        elsif ActionController::Base.use_accept_header
+          accepts.first
+        elsif xhr?
+          Mime::Type.lookup_by_extension("js")
+        else
+          Mime::Type.lookup_by_extension("html")
+        end
+      end
     end
-    
-    
+
+
     # Sets the format by string extension, which can be used to force custom formats that are not controlled by the extension.
     # Example:
     #
     #   class ApplicationController < ActionController::Base
     #     before_filter :adjust_format_for_iphone
-    #   
+    #
     #     private
     #       def adjust_format_for_iphone
     #         request.format = :iphone if request.env["HTTP_USER_AGENT"][/iPhone/]
@@ -114,6 +130,26 @@ module ActionController
     def format=(extension)
       parameters[:format] = extension.to_s
       @format = Mime::Type.lookup_by_extension(parameters[:format])
+    end
+
+    # Returns a symbolized version of the <tt>:format</tt> parameter of the request.
+    # If no format is given it returns <tt>:js</tt>for AJAX requests and <tt>:html</tt>
+    # otherwise.
+    def template_format
+      parameter_format = parameters[:format]
+
+      if parameter_format
+        parameter_format.to_sym
+      elsif xhr?
+        :js
+      else
+        :html
+      end
+    end
+
+    def cache_format
+      parameter_format = parameters[:format]
+      parameter_format && parameter_format.to_sym
     end
 
     # Returns true if the request's "X-Requested-With" header contains
@@ -134,14 +170,15 @@ module ActionController
     # REMOTE_ADDR is a proxy.  HTTP_X_FORWARDED_FOR may be a comma-
     # delimited list in the case of multiple chained proxies; the last
     # address which is not trusted is the originating IP.
-
     def remote_ip
       if TRUSTED_PROXIES !~ @env['REMOTE_ADDR']
         return @env['REMOTE_ADDR']
       end
 
+      remote_ips = @env['HTTP_X_FORWARDED_FOR'] && @env['HTTP_X_FORWARDED_FOR'].split(',')
+
       if @env.include? 'HTTP_CLIENT_IP'
-        if @env.include? 'HTTP_X_FORWARDED_FOR'
+        if remote_ips && !remote_ips.include?(@env['HTTP_CLIENT_IP'])
           # We don't know which came from the proxy, and which from the user
           raise ActionControllerError.new(<<EOM)
 IP spoofing attack?!
@@ -149,11 +186,11 @@ HTTP_CLIENT_IP=#{@env['HTTP_CLIENT_IP'].inspect}
 HTTP_X_FORWARDED_FOR=#{@env['HTTP_X_FORWARDED_FOR'].inspect}
 EOM
         end
+
         return @env['HTTP_CLIENT_IP']
       end
 
-      if @env.include? 'HTTP_X_FORWARDED_FOR' then
-        remote_ips = @env['HTTP_X_FORWARDED_FOR'].split(',')
+      if remote_ips
         while remote_ips.size > 1 && TRUSTED_PROXIES =~ remote_ips.last.strip
           remote_ips.pop
         end
@@ -231,7 +268,7 @@ EOM
       parts[0..-(tld_length+2)]
     end
 
-    # Return the query string, accounting for server idiosyncracies.
+    # Return the query string, accounting for server idiosyncrasies.
     def query_string
       if uri = @env['REQUEST_URI']
         uri.split('?', 2)[1] || ''
@@ -240,7 +277,7 @@ EOM
       end
     end
 
-    # Return the request URI, accounting for server idiosyncracies.
+    # Return the request URI, accounting for server idiosyncrasies.
     # WEBrick includes the full URL. IIS leaves REQUEST_URI blank.
     def request_uri
       if uri = @env['REQUEST_URI']
@@ -269,25 +306,9 @@ EOM
       path = (uri = request_uri) ? uri.split('?').first.to_s : ''
 
       # Cut off the path to the installation directory if given
-      path.sub!(%r/^#{relative_url_root}/, '')
-      path || ''      
+      path.sub!(%r/^#{ActionController::Base.relative_url_root}/, '')
+      path || ''
     end
-    
-    # Returns the path minus the web server relative installation directory.
-    # This can be set with the environment variable RAILS_RELATIVE_URL_ROOT.
-    # It can be automatically extracted for Apache setups. If the server is not
-    # Apache, this method returns an empty string.
-    def relative_url_root
-      @@relative_url_root ||= case
-        when @env["RAILS_RELATIVE_URL_ROOT"]
-          @env["RAILS_RELATIVE_URL_ROOT"]
-        when server_software == 'apache'
-          @env["SCRIPT_NAME"].to_s.sub(/\/dispatch\.(fcgi|rb|cgi)$/, '')
-        else
-          ''
-      end
-    end
-
 
     # Read the request body. This is useful for web services that need to
     # work with raw requests directly.
@@ -309,15 +330,15 @@ EOM
       @symbolized_path_parameters = @parameters = nil
     end
 
-    # The same as <tt>path_parameters</tt> with explicitly symbolized keys 
-    def symbolized_path_parameters 
+    # The same as <tt>path_parameters</tt> with explicitly symbolized keys
+    def symbolized_path_parameters
       @symbolized_path_parameters ||= path_parameters.symbolize_keys
     end
 
     # Returns a hash with the parameters used to form the path of the request.
     # Returned hash keys are strings.  See <tt>symbolized_path_parameters</tt> for symbolized keys.
     #
-    # Example: 
+    # Example:
     #
     #   {'action' => 'my_action', 'controller' => 'my_controller'}
     def path_parameters

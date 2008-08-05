@@ -171,7 +171,7 @@ module ActionController #:nodoc:
 
     # Was the response successful?
     def success?
-      response_code == 200
+      (200..299).include?(response_code)
     end
 
     # Was the URL not found?
@@ -205,24 +205,13 @@ module ActionController #:nodoc:
       p.match(redirect_url) != nil
     end
 
-    # Returns the template path of the file which was used to
-    # render this response (or nil) 
-    def rendered_file(with_controller=false)
-      unless template.first_render.nil?
-        unless with_controller
-          template.first_render
-        else
-          template.first_render.split('/').last || template.first_render
-        end
-      end
+    # Returns the template of the file which was used to
+    # render this response (or nil)
+    def rendered_template
+      template._first_render
     end
 
-    # Was this template rendered by a file?
-    def rendered_with_file?
-      !rendered_file.nil?
-    end
-
-    # A shortcut to the flash. Returns an empyt hash if no session flash exists.
+    # A shortcut to the flash. Returns an empty hash if no session flash exists.
     def flash
       session['flash'] || {}
     end
@@ -277,7 +266,13 @@ module ActionController #:nodoc:
     end
   end
 
-  class TestResponse < AbstractResponse #:nodoc:
+  # Integration test methods such as ActionController::Integration::Session#get
+  # and ActionController::Integration::Session#post return objects of class
+  # TestResponse, which represent the HTTP response results of the requested
+  # controller actions.
+  #
+  # See AbstractResponse for more information on controller response objects.
+  class TestResponse < AbstractResponse
     include TestResponseBehavior
   end
 
@@ -359,6 +354,7 @@ module ActionController #:nodoc:
   module TestProcess
     def self.included(base)
       # execute the request simulating a specific HTTP method and set/volley the response
+      # TODO: this should be un-DRY'ed for the sake of API documentation.
       %w( get post put delete head ).each do |method|
         base.class_eval <<-EOV, __FILE__, __LINE__
           def #{method}(action, parameters = nil, session = nil, flash = nil)
@@ -403,15 +399,6 @@ module ActionController #:nodoc:
       end
     end
     alias xhr :xml_http_request
-
-    def follow_redirect
-      redirected_controller = @response.redirected_to[:controller]
-      if redirected_controller && redirected_controller != @controller.controller_name
-        raise "Can't follow redirects outside of current controller (from #{@controller.controller_name} to #{redirected_controller})"
-      end
-
-      get(@response.redirected_to.delete(:action), @response.redirected_to.stringify_keys)
-    end
 
     def assigns(key = nil) 
       if key.nil? 

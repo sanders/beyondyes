@@ -2,8 +2,6 @@ module ActionController
   # Dispatches requests to the appropriate controller and takes care of
   # reloading the app after each request when Dependencies.load? is true.
   class Dispatcher
-    @@guard = Mutex.new
-
     class << self
       def define_dispatcher_callbacks(cache_classes)
         unless cache_classes
@@ -96,20 +94,18 @@ module ActionController
     include ActiveSupport::Callbacks
     define_callbacks :prepare_dispatch, :before_dispatch, :after_dispatch
 
-    def initialize(output, request = nil, response = nil)
+    def initialize(output = $stdout, request = nil, response = nil)
       @output, @request, @response = output, request, response
     end
 
     def dispatch
-      @@guard.synchronize do
-        begin
-          run_callbacks :before_dispatch
-          handle_request
-        rescue Exception => exception
-          failsafe_rescue exception
-        ensure
-          run_callbacks :after_dispatch, :enumerator => :reverse_each
-        end
+      begin
+        run_callbacks :before_dispatch
+        handle_request
+      rescue Exception => exception
+        failsafe_rescue exception
+      ensure
+        run_callbacks :after_dispatch, :enumerator => :reverse_each
       end
     end
 
@@ -123,19 +119,25 @@ module ActionController
       failsafe_rescue exception
     end
 
+    def call(env)
+      @request = RackRequest.new(env)
+      @response = RackResponse.new(@request)
+      dispatch
+    end
+
     def reload_application
       # Run prepare callbacks before every request in development mode
       run_callbacks :prepare_dispatch
 
       Routing::Routes.reload
-      ActionView::TemplateFinder.reload! unless ActionView::Base.cache_template_loading
+      ActionController::Base.view_paths.reload!
     end
 
     # Cleanup the application by clearing out loaded classes so they can
     # be reloaded on the next request without restarting the server.
     def cleanup_application
       ActiveRecord::Base.reset_subclasses if defined?(ActiveRecord)
-      Dependencies.clear
+      ActiveSupport::Dependencies.clear
       ActiveRecord::Base.clear_reloadable_connections! if defined?(ActiveRecord)
     end
 

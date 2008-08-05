@@ -118,6 +118,19 @@ module ActiveRecord
         @connection
       end
 
+      def open_transactions
+        @open_transactions ||= 0
+      end
+
+      def increment_open_transactions
+        @open_transactions ||= 0
+        @open_transactions += 1
+      end
+
+      def decrement_open_transactions
+        @open_transactions -= 1
+      end
+
       def log_info(sql, name, runtime)
         if @logger && @logger.debug?
           name = "#{name.nil? ? "SQL" : name} (#{sprintf("%f", runtime)})"
@@ -128,15 +141,11 @@ module ActiveRecord
       protected
         def log(sql, name)
           if block_given?
-            if @logger and @logger.debug?
-              result = nil
-              seconds = Benchmark.realtime { result = yield }
-              @runtime += seconds
-              log_info(sql, name, seconds)
-              result
-            else
-              yield
-            end
+            result = nil
+            seconds = Benchmark.realtime { result = yield }
+            @runtime += seconds
+            log_info(sql, name, seconds)
+            result
           else
             log_info(sql, name, 0)
             nil

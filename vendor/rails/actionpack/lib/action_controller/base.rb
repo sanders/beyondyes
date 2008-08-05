@@ -283,12 +283,13 @@ module ActionController #:nodoc:
     @@debug_routes = true
     cattr_accessor :debug_routes
 
-    # Indicates to Mongrel or Webrick whether to allow concurrent action
-    # processing. Your controller actions and any other code they call must
-    # also behave well when called from concurrent threads. Turned off by
-    # default.
+    # Indicates whether to allow concurrent action processing. Your
+    # controller actions and any other code they call must also behave well
+    # when called from concurrent threads. Turned off by default.
     @@allow_concurrency = false
     cattr_accessor :allow_concurrency
+
+    @@guard = Monitor.new
 
     # Modern REST web services often need to submit complex data to the web application.
     # The <tt>@@param_parsers</tt> hash lets you register handlers which will process the HTTP body and add parameters to the
@@ -347,9 +348,28 @@ module ActionController #:nodoc:
     cattr_accessor :optimise_named_routes
     self.optimise_named_routes = true
 
+    # Indicates whether the response format should be determined by examining the Accept HTTP header,
+    # or by using the simpler params + ajax rules.
+    #
+    # If this is set to +true+ (the default) then +respond_to+ and +Request#format+ will take the Accept
+    # header into account.  If it is set to false then the request format will be determined solely
+    # by examining params[:format].  If params format is missing, the format will be either HTML or
+    # Javascript depending on whether the request is an AJAX request.
+    cattr_accessor :use_accept_header
+    self.use_accept_header = true
+
     # Controls whether request forgergy protection is turned on or not. Turned off by default only in test mode.
     class_inheritable_accessor :allow_forgery_protection
     self.allow_forgery_protection = true
+
+    # If you are deploying to a subdirectory, you will need to set
+    # <tt>config.action_controller.relative_url_root</tt>
+    # This defaults to ENV['RAILS_RELATIVE_URL_ROOT']
+    cattr_writer :relative_url_root
+
+    def self.relative_url_root
+      @@relative_url_root || ENV['RAILS_RELATIVE_URL_ROOT']
+    end
 
     # Holds the request object that's primarily used to get environment variables through access like
     # <tt>request.env["REQUEST_URI"]</tt>.
@@ -409,7 +429,7 @@ module ActionController #:nodoc:
       # More methods can be hidden using <tt>hide_actions</tt>.
       def hidden_actions
         unless read_inheritable_attribute(:hidden_actions)
-          write_inheritable_attribute(:hidden_actions, ActionController::Base.public_instance_methods.map(&:to_s))
+          write_inheritable_attribute(:hidden_actions, ActionController::Base.public_instance_methods.map { |m| m.to_s })
         end
 
         read_inheritable_attribute(:hidden_actions)
@@ -417,19 +437,18 @@ module ActionController #:nodoc:
 
       # Hide each of the given methods from being callable as actions.
       def hide_action(*names)
-        write_inheritable_attribute(:hidden_actions, hidden_actions | names.map(&:to_s))
+        write_inheritable_attribute(:hidden_actions, hidden_actions | names.map { |name| name.to_s })
       end
 
-      ## View load paths determine the bases from which template references can be made. So a call to
-      ## render("test/template") will be looked up in the view load paths array and the closest match will be
-      ## returned.
+      # View load paths determine the bases from which template references can be made. So a call to
+      # render("test/template") will be looked up in the view load paths array and the closest match will be
+      # returned.
       def view_paths
         @view_paths || superclass.view_paths
       end
 
       def view_paths=(value)
-        @view_paths = value
-        ActionView::TemplateFinder.process_view_paths(value)
+        @view_paths = ActionView::Base.process_view_paths(value) if value
       end
 
       # Adds a view_path to the front of the view_paths array.
@@ -441,8 +460,7 @@ module ActionController #:nodoc:
       #
       def prepend_view_path(path)
         @view_paths = superclass.view_paths.dup if @view_paths.nil?
-        view_paths.unshift(*path)
-        ActionView::TemplateFinder.process_view_paths(path)
+        @view_paths.unshift(*path)
       end
 
       # Adds a view_path to the end of the view_paths array.
@@ -454,8 +472,7 @@ module ActionController #:nodoc:
       #
       def append_view_path(path)
         @view_paths = superclass.view_paths.dup if @view_paths.nil?
-        view_paths.push(*path)
-        ActionView::TemplateFinder.process_view_paths(path)
+        @view_paths.push(*path)
       end
 
       # Replace sensitive parameter data from the request log.
@@ -519,6 +536,8 @@ module ActionController #:nodoc:
     public
       # Extracts the action_name from the request parameters and performs that action.
       def process(request, response, method = :perform_action, *arguments) #:nodoc:
+        response.request = request
+
         initialize_template_class(response)
         assign_shortcuts(request, response)
         initialize_current_url
@@ -526,11 +545,14 @@ module ActionController #:nodoc:
         forget_variables_added_to_assigns
 
         log_processing
-        send(method, *arguments)
+
+        if @@allow_concurrency
+          send(method, *arguments)
+        else
+          @@guard.synchronize { send(method, *arguments) }
+        end
 
         assign_default_content_type_and_charset
-
-        response.request = request
         response.prepare! unless component_request?
         response
       ensure
@@ -613,8 +635,9 @@ module ActionController #:nodoc:
       #
       # This takes the current URL as is and only exchanges the action. In contrast, <tt>url_for :action => 'print'</tt>
       # would have slashed-off the path components after the changed action.
-      def url_for(options = nil) #:doc:
-        case options || {}
+      def url_for(options = {})
+        options ||= {}
+        case options
           when String
             options
           when Hash
@@ -647,11 +670,11 @@ module ActionController #:nodoc:
 
       # View load paths for controller.
       def view_paths
-        @template.finder.view_paths
+        @template.view_paths
       end
 
       def view_paths=(value)
-        @template.finder.view_paths = value  # Mutex needed
+        @template.view_paths = ActionView::Base.process_view_paths(value)
       end
 
       # Adds a view_path to the front of the view_paths array.
@@ -661,7 +684,7 @@ module ActionController #:nodoc:
       #   self.prepend_view_path(["views/default", "views/custom"])
       #
       def prepend_view_path(path)
-        @template.finder.prepend_view_path(path)  # Mutex needed
+        @template.view_paths.unshift(*path)
       end
 
       # Adds a view_path to the end of the view_paths array.
@@ -671,7 +694,7 @@ module ActionController #:nodoc:
       #   self.append_view_path(["views/default", "views/custom"])
       #
       def append_view_path(path)
-        @template.finder.append_view_path(path)  # Mutex needed
+        @template.view_paths.push(*path)
       end
 
     protected
@@ -712,6 +735,9 @@ module ActionController #:nodoc:
       #   # builds the complete response.
       #   render :partial => "person", :collection => @winners
       #
+      #   # Renders a collection of partials but with a custom local variable name
+      #   render :partial => "admin_person", :collection => @winners, :as => :person
+      #
       #   # Renders the same collection of partials, but also renders the
       #   # person_divider partial between each person partial.
       #   render :partial => "person", :collection => @winners, :spacer_template => "person_divider"
@@ -742,6 +768,9 @@ module ActionController #:nodoc:
       #
       #   # Renders the template located in [TEMPLATE_ROOT]/weblog/show.r(html|xml) (in Rails, app/views/weblog/show.erb)
       #   render :template => "weblog/show"
+      #
+      #   # Renders the template with a local variable
+      #   render :template => "weblog/show", :locals => {:customer => Customer.new}
       #
       # === Rendering a file
       #
@@ -862,22 +891,21 @@ module ActionController #:nodoc:
 
         else
           if file = options[:file]
-            render_for_file(file, options[:status], options[:use_full_path], options[:locals] || {})
+            render_for_file(file, options[:status], nil, options[:locals] || {})
 
           elsif template = options[:template]
-            render_for_file(template, options[:status], true)
+            render_for_file(template, options[:status], true, options[:locals] || {})
 
           elsif inline = options[:inline]
             add_variables_to_assigns
-            tmpl = ActionView::InlineTemplate.new(@template, options[:inline], options[:locals], options[:type])
-            render_for_text(@template.render_template(tmpl), options[:status])
+            render_for_text(@template.render(options), options[:status])
 
           elsif action_name = options[:action]
             template = default_template_name(action_name.to_s)
             if options[:layout] && !template_exempt_from_layout?(template)
-              render_with_a_layout(:file => template, :status => options[:status], :use_full_path => true, :layout => true)
+              render_with_a_layout(:file => template, :status => options[:status], :layout => true)
             else
-              render_with_no_layout(:file => template, :status => options[:status], :use_full_path => true)
+              render_with_no_layout(:file => template, :status => options[:status])
             end
 
           elsif xml = options[:xml]
@@ -897,12 +925,12 @@ module ActionController #:nodoc:
             if collection = options[:collection]
               render_for_text(
                 @template.send!(:render_partial_collection, partial, collection,
-                options[:spacer_template], options[:locals]), options[:status]
+                options[:spacer_template], options[:locals], options[:as]), options[:status]
               )
             else
               render_for_text(
                 @template.send!(:render_partial, partial,
-                ActionView::Base::ObjectWrapper.new(options[:object]), options[:locals]), options[:status]
+                options[:object], options[:locals]), options[:status]
               )
             end
 
@@ -962,6 +990,17 @@ module ActionController #:nodoc:
         render :nothing => true, :status => status
       end
 
+      # Sets the Last-Modified response header. Returns 304 Not Modified if the
+      # If-Modified-Since request header is <= last modified.
+      def last_modified!(utc_time)
+        head(:not_modified) if response.last_modified!(utc_time)
+      end
+
+      # Sets the ETag response header. Returns 304 Not Modified if the
+      # If-None-Match request header matches.
+      def etag!(etag)
+        head(:not_modified) if response.etag!(etag)
+      end
 
       # Clears the rendered results, allowing for another render to be performed.
       def erase_render_results #:nodoc:
@@ -1047,27 +1086,29 @@ module ActionController #:nodoc:
           status = 302
         end
 
+        response.redirected_to= options
+        logger.info("Redirected to #{options}") if logger && logger.info?
+
         case options
           when %r{^\w+://.*}
-            raise DoubleRenderError if performed?
-            logger.info("Redirected to #{options}") if logger && logger.info?
-            response.redirect(options, interpret_status(status))
-            response.redirected_to = options
-            @performed_redirect = true
-
+            redirect_to_full_url(options, status)
           when String
-            redirect_to(request.protocol + request.host_with_port + options, :status=>status)
-
+            redirect_to_full_url(request.protocol + request.host_with_port + options, status)
           when :back
-            request.env["HTTP_REFERER"] ? redirect_to(request.env["HTTP_REFERER"], :status=>status) : raise(RedirectBackError)
-
-          when Hash
-            redirect_to(url_for(options), :status=>status)
-            response.redirected_to = options
-
+            if referer = request.headers["Referer"]
+              redirect_to(referer, :status=>status)
+            else
+              raise RedirectBackError
+            end
           else
-            redirect_to(url_for(options), :status=>status)
+            redirect_to_full_url(url_for(options), status)
         end
+      end
+
+      def redirect_to_full_url(url, status)
+        raise DoubleRenderError if performed?
+        response.redirect(url, interpret_status(status))
+        @performed_redirect = true
       end
 
       # Sets a HTTP 1.1 Cache-Control header. Defaults to issuing a "private" instruction, so that
@@ -1102,10 +1143,10 @@ module ActionController #:nodoc:
 
 
     private
-      def render_for_file(template_path, status = nil, use_full_path = false, locals = {}) #:nodoc:
+      def render_for_file(template_path, status = nil, use_full_path = nil, locals = {}) #:nodoc:
         add_variables_to_assigns
         logger.info("Rendering #{template_path}" + (status ? " (#{status})" : '')) if logger
-        render_for_text(@template.render_file(template_path, use_full_path, locals), status)
+        render_for_text(@template.render(:file => template_path, :locals => locals), status)
       end
 
       def render_for_text(text = nil, status = nil, append_response = false) #:nodoc:
@@ -1147,7 +1188,7 @@ module ActionController #:nodoc:
 
       def log_processing
         if logger && logger.info?
-          logger.info "\n\nProcessing #{controller_class_name}\##{action_name} (for #{request_origin}) [#{request.method.to_s.upcase}]"
+          logger.info "\n\nProcessing #{self.class.name}\##{action_name} (for #{request_origin}) [#{request.method.to_s.upcase}]"
           logger.info "  Session ID: #{@_session.session_id}" if @_session and @_session.respond_to?(:session_id)
           logger.info "  Parameters: #{respond_to?(:filter_parameters) ? filter_parameters(params).inspect : params.inspect}"
         end
@@ -1167,7 +1208,7 @@ module ActionController #:nodoc:
         elsif template_exists? && template_public?
           default_render
         else
-          raise UnknownAction, "No action responded to #{action_name}", caller
+          raise UnknownAction, "No action responded to #{action_name}. Actions: #{action_methods.to_a.sort.to_sentence}", caller
         end
       end
 
@@ -1193,7 +1234,7 @@ module ActionController #:nodoc:
       end
 
       def self.action_methods
-        @action_methods ||= Set.new(public_instance_methods.map(&:to_s)) - hidden_actions
+        @action_methods ||= Set.new(public_instance_methods.map { |m| m.to_s }) - hidden_actions
       end
 
       def add_variables_to_assigns
@@ -1232,7 +1273,7 @@ module ActionController #:nodoc:
       end
 
       def template_exists?(template_name = default_template_name)
-        @template.finder.file_exists?(template_name)
+        @template.file_exists?(template_name)
       end
 
       def template_public?(template_name = default_template_name)
@@ -1240,9 +1281,10 @@ module ActionController #:nodoc:
       end
 
       def template_exempt_from_layout?(template_name = default_template_name)
-        extension = @template && @template.finder.pick_template_extension(template_name)
-        name_with_extension = !template_name.include?('.') && extension ? "#{template_name}.#{extension}" : template_name
-        @@exempt_from_layout.any? { |ext| name_with_extension =~ ext }
+        template_name = @template.pick_template(template_name).to_s if @template
+        @@exempt_from_layout.any? { |ext| template_name =~ ext }
+      rescue ActionView::MissingTemplate
+        false
       end
 
       def default_template_name(action_name = self.action_name)

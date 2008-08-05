@@ -70,7 +70,7 @@ end
 
 class HasAndBelongsToManyAssociationsTest < ActiveRecord::TestCase
   fixtures :accounts, :companies, :categories, :posts, :categories_posts, :developers, :projects, :developers_projects,
-           :parrots, :pirates, :treasures, :price_estimates
+           :parrots, :pirates, :treasures, :price_estimates, :tags, :taggings
 
   def test_has_and_belongs_to_many
     david = Developer.find(1)
@@ -680,5 +680,11 @@ class HasAndBelongsToManyAssociationsTest < ActiveRecord::TestCase
     assert_equal 1, developer.projects.size
     assert_equal developer, project.developers.find(:first)
     assert_equal project, developer.projects.find(:first)
+  end
+
+  def test_dynamic_find_should_respect_association_include
+    # SQL error in sort clause if :include is not included
+    # due to Unknown column 'authors.id'
+    assert Category.find(1).posts_with_authors_sorted_by_author_id.find_by_title('Welcome to the weblog')
   end
 end

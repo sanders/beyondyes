@@ -1,0 +1,11 @@
+  <div align="center">
+    <form action="/special/authenticate" id="loginForm" method="post">
+      Name or Email: <input id="name_or_email" name="name_or_email" type="text" value="" /><br />
+      Password: <input id="password" name="password" type="password" value="" /><br />
+      <a href="/special/remind_password" id="remind_password_link">forgot password?</a>
+      <a href="/special/signup">sign up</a>
+      <input type="submit" name="submit" value="LOGIN">
+    </form>
+  </div>
+  <%= javascript_include_tag "jquery/jquery" %>
+  <%= javascript_include_tag "special/login" %>

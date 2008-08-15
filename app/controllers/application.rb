@@ -4,6 +4,13 @@
 class ApplicationController < ActionController::Base
   helper :all # include all helpers, all the time
 
+  before_filter :set_default_title
+
+private
+  def set_default_title
+    @title = params[:action]
+  end
+
   # See ActionController::RequestForgeryProtection for details
   # Uncomment the :secret if you're not using the cookie session store
   protect_from_forgery # :secret => '3fbcdb00cc211070cfeb5e61916f506f'

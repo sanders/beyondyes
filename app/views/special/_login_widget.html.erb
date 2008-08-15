@@ -1,0 +1,13 @@
+    <!-- LOGIN WIDGET -->
+    <div id="loginWidget" class="loginBox">
+      <div class="loginLink"<%= link_not_form ? "" : ' style="display:none"' %>>
+        <a href="/special/login" id="login_link">log in</a>
+      </div>
+      <div class="loginForm"<%= link_not_form ? ' style="display:none"' : "" %>>
+        <form action="/special/login" id="loginForm" method="post">
+          Name or Email: <input id="name_or_email" name="name_or_email" type="text" value="" /><br />
+          Password: <input id="password" name="password" type="password" value="" /><br />
+          <input type="submit" name="submit" value="Log me in">
+        </form>
+      </div>
+    </div>

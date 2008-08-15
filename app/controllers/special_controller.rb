@@ -1,4 +1,12 @@
 class SpecialController < ApplicationController
+  def remind_password
+    @title = "Password Reminder"
+  end
+
+  def signup
+    @title = "Sign Up"
+  end
+
   def login
     @title = "Login"
   end

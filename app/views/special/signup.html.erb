@@ -1,11 +1,1 @@
-  <div class="center">
-
-<%= render :partial => "special/signup_widget",          :locals => {:link_not_form => false} -%>
-
-<%= render :partial => "special/login_widget",           :locals => {:link_not_form => true}  -%>
-
-<%= render :partial => "special/remind_password_widget", :locals => {:link_not_form => true}  -%>
-
-  </div>
-  <%= javascript_include_tag "jquery/jquery" %>
-  <%= javascript_include_tag "special/signup" %>
+<%= render :partial => "special/login_widget", :locals => {:active_login_form => :signup} -%>

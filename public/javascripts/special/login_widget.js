@@ -38,50 +38,50 @@ $(document).ready(function() {
   });
   $(".login_cancel").each(function() {
     $(this).click(function(){
-      $(signup_link).show();
-      $(login_link).show();
-      $(remind_password_link).show();
+      $(signup_link).slideDown(400);
+      $(login_link).slideDown(400);
+      $(remind_password_link).slideDown(400);
 
-      $(signup_form).hide();
-      $(login_form).hide();
-      $(remind_password_form).hide();
+      $(signup_form).slideUp(400);
+      $(login_form).slideUp(400);
+      $(remind_password_form).slideUp(400);
       return false;
     });
   });
 
   $(signup_link).click(function() {
     $("#signup_password_verify")[0].value = null;
-    $(signup_link).hide();
-    $(login_link).show();
-    $(remind_password_link).show();
+    $(signup_link).slideUp(400);
+    $(login_link).slideDown(400);
+    $(remind_password_link).slideDown(400);
 
-    $(signup_form).show();
-    $(login_form).hide();
-    $(remind_password_form).hide();
+    $(signup_form).slideDown(400);
+    $(login_form).slideUp(400);
+    $(remind_password_form).slideUp(400);
     return false;
   });
 
   $(login_link).click(function() {
     $("#signup_password_verify")[0].value = null;
-    $(signup_link).show();
-    $(login_link).hide();
-    $(remind_password_link).show();
+    $(signup_link).slideDown(400);
+    $(login_link).slideUp(400);
+    $(remind_password_link).slideDown(400);
 
-    $(signup_form).hide();
-    $(login_form).show();
-    $(remind_password_form).hide();
+    $(signup_form).slideUp(400);
+    $(login_form).slideDown(400);
+    $(remind_password_form).slideUp(400);
     return false;
   });
 
   $(remind_password_link).click(function() {
     $("#signup_password_verify")[0].value = null;
-    $(signup_link).show();
-    $(login_link).show();
-    $(remind_password_link).hide();
+    $(signup_link).slideDown(400);
+    $(login_link).slideDown(400);
+    $(remind_password_link).slideUp(400);
 
-    $(signup_form).hide();
-    $(login_form).hide();
-    $(remind_password_form).show();
+    $(signup_form).slideUp(400);
+    $(login_form).slideUp(400);
+    $(remind_password_form).slideDown(400);
     return false;
   });
 });

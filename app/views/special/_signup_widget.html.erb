@@ -4,12 +4,12 @@
         <a href="/special/signup" id="signup_link">sign up</a>
       </div>
       <div class="loginForm"<%= link_not_form ? ' style="display:none"' : "" %>>
-        <form action="/special/signup" id="loginForm" method="post">
-          Full Name: <input id="name" name="name" type="text" value="" /><br />
-          Email: <input id="email" name="email" type="text" value="" /><br />
-          Password: <input id="password" name="password" type="password" value="" /><br />
-          Retype Password: <input id="password_verify" name="password_verify" type="password_verify" value="" /><br />
-          <input type="submit" name="submit" value="Create my account">
+        <form action="/special/signup" method="post">
+          <p>Full Name: <input id="signup_name" name="name" type="text" value="" /></p>
+          <p>Email: <input id="signup_email" name="email" type="text" value="" /></p>
+          <p>Password: <input id="signup_password" name="password" type="password" value="" /></p>
+          <p>Retype Password: <input id="signup_password_verify" name="password_verify" type="password" value="" /></p>
+          <p><input type="submit" name="submit" value="Create my account" /></p>
         </form>
       </div>
     </div>

@@ -131,11 +131,11 @@ describe User, "login" do
   end
 
   it "should login a user given an existing legal_name and password" do
-    User.login({:name_or_email => 'Brandon Clark Schoepflin Sanders', :password => "PassWord"}).id.should eql(1)
+    User.login({:name_or_email => 'BrandonClarkSchoepflin Sanders', :password => "PassWord"}).id.should eql(1)
   end
 
   it "should login a user given an email and password" do
-    User.login({:name_or_email => 'brandon@thesanders.us', :password => "PassWord"}).id.should eql(1)
+    User.login({:name_or_email => 'BRANDON@thesanders.us', :password => "PassWord"}).id.should eql(1)
   end
 
   it "should return nil given a non-existant legal_name/email and password" do

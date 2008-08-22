@@ -2,11 +2,12 @@ class User < ActiveRecord::Migration
   def self.up
     create_table :users do |t|
       t.column :legal_name, :string, :null => false
-      t.column :name_key, :string, :null => false
-      t.column :password, :string, :null => false
+      t.column :name_key,   :string, :null => false
+      t.column :password,   :string, :null => false
       t.column :created_at, :datetime
 
-      t.column :email, :string
+      t.column :email,      :string, :null => false
+      t.column :email_key,  :string, :null => false
       t.column :email_verified_at, :datetime
 
       t.column :last_action_at, :datetime
@@ -34,7 +35,7 @@ class User < ActiveRecord::Migration
     add_index :users, :legal_name
     add_index :users, :password
     add_index :users, :created_at
-    add_index :users, :email
+    add_index :users, :email_key
     add_index :users, :email_verified_at
     add_index :users, :last_action_at
   end

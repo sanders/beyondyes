@@ -16,7 +16,8 @@ ActiveRecord::Schema.define(:version => 20080709151448) do
     t.string   "name_key",               :null => false
     t.string   "password",               :null => false
     t.datetime "created_at"
-    t.string   "email"
+    t.string   "email",                  :null => false
+    t.string   "email_key",              :null => false
     t.datetime "email_verified_at"
     t.datetime "last_action_at"
     t.string   "city"
@@ -38,9 +39,10 @@ ActiveRecord::Schema.define(:version => 20080709151448) do
 
   add_index "users", ["last_action_at"], :name => "index_users_on_last_action_at"
   add_index "users", ["email_verified_at"], :name => "index_users_on_email_verified_at"
-  add_index "users", ["email"], :name => "index_users_on_email"
+  add_index "users", ["email_key"], :name => "index_users_on_email_key"
   add_index "users", ["created_at"], :name => "index_users_on_created_at"
   add_index "users", ["password"], :name => "index_users_on_password"
   add_index "users", ["legal_name"], :name => "index_users_on_legal_name"
+  add_index "users", ["name_key"], :name => "index_users_on_name_key"
 
 end

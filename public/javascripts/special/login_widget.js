@@ -38,10 +38,6 @@ $(document).ready(function() {
   });
   $(".login_cancel").each(function() {
     $(this).click(function(){
-      $(signup_link).slideDown(400);
-      $(login_link).slideDown(400);
-      $(remind_password_link).slideDown(400);
-
       $(signup_form).slideUp(400);
       $(login_form).slideUp(400);
       $(remind_password_form).slideUp(400);
@@ -51,10 +47,6 @@ $(document).ready(function() {
 
   $(signup_link).click(function() {
     $("#signup_password_verify")[0].value = null;
-    $(signup_link).slideUp(400);
-    $(login_link).slideDown(400);
-    $(remind_password_link).slideDown(400);
-
     $(signup_form).slideDown(400);
     $(login_form).slideUp(400);
     $(remind_password_form).slideUp(400);
@@ -63,10 +55,6 @@ $(document).ready(function() {
 
   $(login_link).click(function() {
     $("#signup_password_verify")[0].value = null;
-    $(signup_link).slideDown(400);
-    $(login_link).slideUp(400);
-    $(remind_password_link).slideDown(400);
-
     $(signup_form).slideUp(400);
     $(login_form).slideDown(400);
     $(remind_password_form).slideUp(400);
@@ -75,10 +63,6 @@ $(document).ready(function() {
 
   $(remind_password_link).click(function() {
     $("#signup_password_verify")[0].value = null;
-    $(signup_link).slideDown(400);
-    $(login_link).slideDown(400);
-    $(remind_password_link).slideUp(400);
-
     $(signup_form).slideUp(400);
     $(login_form).slideUp(400);
     $(remind_password_form).slideDown(400);

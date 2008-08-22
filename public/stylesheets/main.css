@@ -169,3 +169,26 @@ a:hover {
 #sidebar ul.links li {
   margin-bottom: 5px;
 }
+#loginWidget {
+  width: 200px;
+  margin: 0px auto;
+}
+#loginWidget dt{
+  text-align: center;
+  background-color: #9F9;
+}
+#loginWidget dt a {
+  text-decoration: none;
+}
+#loginWidget dd{
+  text-align: left;
+  margin-left: 0px;
+  padding-left: 1em;
+  padding-right: 1em;
+}
+#loginWidget dd, #loginWidget dt {
+  border: thin solid #666
+}
+div .center {
+  text-align: center;
+}

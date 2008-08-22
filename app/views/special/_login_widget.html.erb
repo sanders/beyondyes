@@ -1,38 +1,47 @@
   <dl id="loginWidget">
     <!-- SIGNUP -->
-    <dt<%= login_widget_hide_link? :for => :signup, :given => active_login_form %>>
+    <dt>
       <a href="/special/signup">sign up</a>
     </dt>
     <dd<%= login_widget_hide_form? :for => :signup, :given => active_login_form %>>
       <form action="/special/signup" method="post">
-        <p><label for="signup_name"           >Full Name:      </label><input id="signup_name"            name="signup_name"            type="text"     /></p>
-        <p><label for="signup_email"          >Email:          </label><input id="signup_email"           name="signup_email"           type="text"     /></p>
-        <p><label for="signup_password"       >Password:       </label><input id="signup_password"        name="signup_password"        type="password" /></p>
-        <p><label for="signup_password_verify">Retype Password:</label><input id="signup_password_verify" name="signup_password_verify" type="password" /></p>
-        <p><input type="submit" name="submit" value="Create my account" /></p>
+        <fieldset>
+          <%= token_tag %>
+          <label>Full Name:      <br /><input id="signup_name"            name="signup_name"            type="text"     /></label>
+          <label>Email:          <br /><input id="signup_email"           name="signup_email"           type="text"     /></label>
+          <label>Password:       <br /><input id="signup_password"        name="signup_password"        type="password" /></label>
+          <label>Retype Password:<br /><input id="signup_password_verify" name="signup_password_verify" type="password" /></label>
+          <input type="submit" name="submit" value="Create my account" />
+        </fieldset>
       </form>
     </dd>
 
     <!-- LOGIN -->
-    <dt<%= login_widget_hide_link? :for => :login, :given => active_login_form %>>
+    <dt>
       <a href="/special/login">log in</a>
     </dt>
     <dd<%= login_widget_hide_form? :for => :login, :given => active_login_form %>>
       <form action="/special/login" method="post">
-        <p>Full Name or Email: <input id="login_name_or_email" name="name_or_email" type="text" value="" /></p>
-        <p>Password: <input id="login_password" name="password" type="password" value="" /></p>
-        <p><input type="submit" name="submit" value="Log me in" /></p>
+        <fieldset>
+          <%= token_tag %>
+          <p><label>Full Name or Email:<br /><input id="login_name_or_email" name="name_or_email" type="text"     /></label></p>
+          <p><label>Password:          <br /><input id="login_password"      name="password"      type="password" /></label></p>
+          <p><input type="submit" name="submit" value="Log me in" /></p>
+        </fieldset>
       </form>
     </dd>
 
     <!-- REMIND PASSWORD -->
-    <dt<%= login_widget_hide_link? :for => :remind_password, :given => active_login_form %>>
+    <dt>
       <a href="/special/remind_password">forgot password?</a>
     </dt>
     <dd<%= login_widget_hide_form? :for => :remind_password, :given => active_login_form %>>
       <form action="/special/remind_password" method="post">
-        <p>My Email Address: <input id="remind_password_email_to_remind" name="email_to_remind" type="text" value="" /></p>
-        <p><input type="submit" name="submit" value="Send me a password reminder email" /></p>
+        <fieldset>
+          <%= token_tag %>
+          <p><label>Email Address:<br /><input id="remind_password_email_to_remind" name="email_to_remind" type="text" value="" /></label></p>
+          <p><input type="submit" name="submit" value="Mail my password" /></p>
+        </fieldset>
       </form>
     </dd>
   </dl>

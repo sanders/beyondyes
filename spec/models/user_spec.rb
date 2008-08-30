@@ -91,11 +91,12 @@ describe User, "signup" do
     }.should raise_error(ActiveRecord::RecordInvalid, "Validation failed: Legal name and password already taken")
   end
 
-  it "should raise an error if a user with that name_key and email already exists" do
+  it "should raise an error if a user with that name_key and email_key already exists" do
     User.signup!(@brandon_signup_attributes)
     lambda {
       @brandon_signup_attributes[:password] = "PassWord2"
       @brandon_signup_attributes[:password_verified] = "PassWord2"
+      @brandon_signup_attributes[:email] = "Brandon@TheSanders.us"
       User.signup!(@brandon_signup_attributes)
     }.should raise_error(ActiveRecord::RecordInvalid, "Validation failed: Legal name and email already taken")
   end
